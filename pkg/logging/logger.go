@@ -2,6 +2,9 @@ package logging
 
 import (
 	"context"
+	"fmt"
+	"github.com/natefinch/lumberjack"
+	"net/url"
 	"sync"
 	"time"
 
@@ -14,24 +17,43 @@ type contextKey string
 const loggerKey = contextKey("logger")
 
 var (
-	// defaultLogger is the default logger. It is initialized once per package
-	// include upon calling DefaultLogger.
+	// 生成默认日志器
 	defaultLogger     *zap.SugaredLogger
 	defaultLoggerOnce sync.Once
 )
 
-// NewLogger creates a new logger with the given configuration.
+type lumberjackSink struct {
+	*lumberjack.Logger
+}
+
+func (lumberjackSink) Sync() error {
+	return nil
+}
+
 func NewLogger(debug bool) *zap.SugaredLogger {
 	config := &zap.Config{
 		Level:            zap.NewAtomicLevelAt(zap.InfoLevel),
 		Development:      false,
-		Encoding:         encodingJSON,
+		Encoding:         encodingConsole,
 		EncoderConfig:    encoderConfig,
-		OutputPaths:      outputStderr,
-		ErrorOutputPaths: outputStderr,
+		OutputPaths:      outputFile,
+		ErrorOutputPaths: outputFile,
 	}
 
-	// Add more details if logging is in debug mode.
+	ll := lumberjack.Logger{
+		Filename:   logFile,
+		MaxSize:    64, //MB
+		MaxBackups: 3,
+		MaxAge:     30, //days
+		Compress:   true,
+	}
+
+	zap.RegisterSink("lumberjack", func(*url.URL) (zap.Sink, error) {
+		return lumberjackSink{
+			Logger: &ll,
+		}, nil
+	})
+
 	if debug {
 		config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 		config.Development = true
@@ -45,21 +67,19 @@ func NewLogger(debug bool) *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-// DefaultLogger returns the default logger for the package.
 func DefaultLogger() *zap.SugaredLogger {
 	defaultLoggerOnce.Do(func() {
-		defaultLogger = NewLogger(false)
+		defaultLogger = NewLogger(true)
 	})
 	return defaultLogger
 }
 
-// WithLogger creates a new context with the provided logger attached.
+// 绑定日志器到Context
 func WithLogger(ctx context.Context, logger *zap.SugaredLogger) context.Context {
 	return context.WithValue(ctx, loggerKey, logger)
 }
 
-// FromContext returns the logger stored in the context. If no such logger
-// exists, a default logger is returned.
+//返回Context中存在的日志器，不存在则创建新的日志器
 func FromContext(ctx context.Context) *zap.SugaredLogger {
 	if logger, ok := ctx.Value(loggerKey).(*zap.SugaredLogger); ok {
 		return logger
@@ -83,10 +103,13 @@ const (
 	levelAlert     = "ALERT"
 	levelEmergency = "EMERGENCY"
 
-	encodingJSON = "json"
+	encodingJSON    = "json"
+	encodingConsole = "console"
 )
 
-var outputStderr = []string{"stderr"}
+//var outputStderr = []string{"stderr"}
+var logFile = "logs/app.log"
+var outputFile = []string{"stderr", fmt.Sprintf("lumberjack:%s", logFile)}
 
 var encoderConfig = zapcore.EncoderConfig{
 	TimeKey:        timestamp,
@@ -128,4 +151,90 @@ func timeEncoder() zapcore.TimeEncoder {
 	return func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format(time.RFC3339Nano))
 	}
+}
+
+//-----------------模版方法------------------
+
+func Debug(args ...interface{}) {
+	DefaultLogger().Debug(args)
+}
+
+func Info(args ...interface{}) {
+	DefaultLogger().Info(args)
+}
+
+func Warn(args ...interface{}) {
+	DefaultLogger().Warn(args)
+}
+
+func Error(args ...interface{}) {
+	DefaultLogger().Error(args)
+}
+
+func DPanic(args ...interface{}) {
+	DefaultLogger().DPanic(args)
+}
+
+func Panic(args ...interface{}) {
+	DefaultLogger().Panic(args)
+}
+
+func Fatal(args ...interface{}) {
+	DefaultLogger().Fatal(args)
+}
+
+func Debugf(template string, args ...interface{}) {
+	DefaultLogger().Debugf(template, args)
+}
+
+func Infof(template string, args ...interface{}) {
+	DefaultLogger().Infof(template, args)
+}
+
+func Warnf(template string, args ...interface{}) {
+	DefaultLogger().Warnf(template, args)
+}
+
+func Errorf(template string, args ...interface{}) {
+	DefaultLogger().Errorf(template, args)
+}
+
+func DPanicf(template string, args ...interface{}) {
+	DefaultLogger().DPanicf(template, args)
+}
+
+func Panicf(template string, args ...interface{}) {
+	DefaultLogger().Panicf(template, args)
+}
+
+func Fatalf(template string, args ...interface{}) {
+	DefaultLogger().Fatalf(template, args)
+}
+
+func Debugw(msg string, keysAndValues ...interface{}) {
+	DefaultLogger().Debugw(msg, keysAndValues)
+}
+
+func Infow(msg string, keysAndValues ...interface{}) {
+	DefaultLogger().Infow(msg, keysAndValues)
+}
+
+func Warnw(msg string, keysAndValues ...interface{}) {
+	DefaultLogger().Warnw(msg, keysAndValues)
+}
+
+func Errorw(msg string, keysAndValues ...interface{}) {
+	DefaultLogger().Errorw(msg, keysAndValues)
+}
+
+func DPanicw(msg string, keysAndValues ...interface{}) {
+	DefaultLogger().DPanicw(msg, keysAndValues)
+}
+
+func Panicw(msg string, keysAndValues ...interface{}) {
+	DefaultLogger().Panicw(msg, keysAndValues)
+}
+
+func Fatalw(msg string, keysAndValues ...interface{}) {
+	DefaultLogger().Fatalw(msg, keysAndValues)
 }

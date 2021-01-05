@@ -11,7 +11,11 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-/configs/secret
+configs/secret/*
+/data
+/bin
+/logs
+*.log
 # Test stuff
 /local/
 .vscode/

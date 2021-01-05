@@ -1,7 +1,7 @@
 VERSION := "1.0.0"
 BUILD := $(shell git rev-parse --short HEAD)
 PROJECTNAME := $(shell basename "$(PWD)")
-BUILD_DIR :='export'
+BUILD_DIR := 'pdl'
 
 # Go related variables.
 GOBASE := $(shell pwd)
@@ -9,6 +9,10 @@ GOBIN := $(GOBASE)/bin
 GOFILES := $(wildcard *.go)
 
 LDFLAGS=-ldflags "-X=main.Version=$(VERSION) -X=main.Build=$(BUILD)"
+
+pdl:
+	@echo "  >  Building pdl binary..."
+	go build $(LDFLAGS) -o $(GOBIN)/pdl cmd/pdl/main.go
 
 compile:
 	@echo "  >  Building binary..."
@@ -26,15 +30,7 @@ run:
 	go run cmd/debugger/main.go
 
 build:
-	# 32-Bit Systems
-	# MacOS
-	GOOS=darwin GOARCH=386 go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME)-darwin-386 cmd/$(BUILD_DIR)/main.go
-	# Linux
-	GOOS=linux GOARCH=386 go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME)-linux-386 cmd/$(BUILD_DIR)/main.go
-	# Windows
-	GOOS=windows GOARCH=386 go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME)-windows-386.exe cmd/$(BUILD_DIR)/main.go
-
-    # 64-Bit
+	@echo "  >  Building binary..."
 	# MacOS
 	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME)-darwin-amd64 cmd/$(BUILD_DIR)/main.go
 	# Linux
